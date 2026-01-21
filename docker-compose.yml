@@ -21,7 +21,7 @@ services:
       - "19120:19120"
     environment:
       QUARKUS_HTTP_PORT: 19120
-      NESSIE_VERSION_STORE_TYPE: INMEMORY
+      NESSIE_VERSION_STORE_TYPE: IN_MEMORY
     depends_on:
       - minio
     networks:
