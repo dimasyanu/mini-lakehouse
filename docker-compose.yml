@@ -10,7 +10,7 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin
     command: server /data --console-address ":9001"
     volumes:
-      - ./minio/data:/data
+      - ./_run/minio/data:/data
     networks:
       - minilake
   
@@ -20,10 +20,58 @@ services:
     ports:
       - "19120:19120"
     environment:
+      NESSIE_VERSION_STORE_TYPE: JDBC
+      QUARKUS_DATASOURCE_DB_KIND: postgresql
+      QUARKUS_DATASOURCE_USERNAME: admin
+      QUARKUS_DATASOURCE_PASSWORD: pgadmin
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/nessie
       QUARKUS_HTTP_PORT: 19120
-      NESSIE_VERSION_STORE_TYPE: IN_MEMORY
+      QUARKUS_HTTP_CORS_ENABLED: true
+      QUARKUS_HTTP_CORS_ORIGINS: "*"
+      QUARKUS_HTTP_CORS_METHODS: "GET,POST,PUT,DELETE,OPTIONS"
+      QUARKUS_HTTP_CORS_HEADERS: "accept,authorization,content-type,x-requested-with"
+      QUARKUS_HTTP_CORS_EXPOSED_HEADERS: "Content-Disposition"
     depends_on:
       - minio
+    networks:
+      - minilake
+  
+  nessie-cli:
+    image: ghcr.io/projectnessie/nessie-cli:latest
+    container_name: nessie-cli
+    # entrypoint: ["java", "-jar", "/app/cli/nessie-cli.jar"]
+    depends_on:
+      - nessie
+    networks:
+      - minilake
+  
+  nessie-restapi:
+    container_name: nessie-restapi
+    build:
+      context: .
+      tags:
+        - nessie-restapi:latest
+      dockerfile: nessie/restapi/Dockerfile
+      args:
+        - UNIQUE=$(date +%s)
+    ports:
+      - "19121:19121"
+    depends_on:
+      - nessie
+    networks:
+      - minilake
+  
+  postgres:
+    image: postgres:18-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: pgadmin
+      POSTGRES_DB: nessie
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./_run/postgres:/var/lib/postgresql
     networks:
       - minilake
   
